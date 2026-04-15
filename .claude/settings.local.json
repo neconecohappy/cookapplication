@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx --yes create-next-app@latest . --typescript --tailwind --app --src-dir --eslint --no-turbopack --import-alias \"@/*\" --use-npm --yes)",
+      "Bash(npm --version)",
+      "Bash(npx --version)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(npx next:*)",
+      "Bash(netstat -ano)",
+      "Bash(timeout 8 bash -c 'while ! curl -s http://localhost:3000 > /dev/null 2>&1; do sleep 1; done; echo \"ready\"')",
+      "Bash(taskkill //f //im node.exe)",
+      "Read(//c/Users/supiw/AppData/Local/Temp/claude/C--Users-supiw-Claude-cookapplication/84ed257b-5934-4f10-bd50-38ba87411cc3/tasks/**)",
+      "Bash(node -e \"const d = require\\('./src/mock/mock-data.ts'.replace\\('.ts',''\\)\\); console.log\\('err'\\)\")",
+      "Bash(npm run:*)",
+      "Bash(git init:*)",
+      "Bash(git branch:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}
