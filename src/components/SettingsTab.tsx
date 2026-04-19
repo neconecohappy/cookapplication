@@ -175,10 +175,69 @@ export function SettingsTab({
       </div>
 
       {/* データ管理 */}
-      <div className="rounded-xl bg-white shadow-sm p-4">
+      <div className="rounded-xl bg-white shadow-sm p-4 space-y-3">
         <h3 className="text-[14px] font-bold text-gray-700 mb-2">
           📱 データ管理
         </h3>
+
+        {/* バックアップ */}
+        <button
+          onClick={() => {
+            const data = localStorage.getItem("meal-planner-state-v1");
+            if (!data) {
+              alert("保存データがありません");
+              return;
+            }
+            const blob = new Blob([data], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `gohan-backup-${new Date().toISOString().slice(0, 10)}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+          }}
+          className="w-full h-10 rounded-lg bg-[#e0f2f1] text-[#00897b] text-[13px] font-bold"
+        >
+          💾 バックアップを保存
+        </button>
+
+        {/* 復元 */}
+        <button
+          onClick={() => {
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = ".json";
+            input.onchange = (e) => {
+              const file = (e.target as HTMLInputElement).files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = (ev) => {
+                try {
+                  const text = ev.target?.result as string;
+                  JSON.parse(text); // validate
+                  if (confirm("バックアップからデータを復元しますか？\n現在のデータは上書きされます。")) {
+                    localStorage.setItem("meal-planner-state-v1", text);
+                    window.location.reload();
+                  }
+                } catch {
+                  alert("ファイルが正しくありません");
+                }
+              };
+              reader.readAsText(file);
+            };
+            input.click();
+          }}
+          className="w-full h-10 rounded-lg bg-[#fff3e0] text-[#f57c00] text-[13px] font-bold"
+        >
+          📂 バックアップから復元
+        </button>
+
+        <p className="text-[11px] text-gray-400 text-center">
+          お気に入り・冷蔵庫・設定などすべてのデータを保存・復元できます
+        </p>
+
+        <hr className="border-gray-100" />
+
         <button
           onClick={() => {
             if (confirm("全データをリセットしますか？この操作は取り消せません。")) {

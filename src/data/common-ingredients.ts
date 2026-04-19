@@ -79,7 +79,7 @@ export const COMMON_INGREDIENTS = [
  */
 export const AMOUNT_PRESETS: Record<string, string[]> = {
   // 重さ
-  weight: ["100g", "200g", "300g", "400g", "500g"],
+  weight: ["100g", "200g", "300g", "400g", "500g", "600g", "700g", "800g", "900g", "1000g"],
   // 個数
   count: ["1個", "2個", "3個", "4個", "5個", "6個", "7個", "8個"],
   // 本数
