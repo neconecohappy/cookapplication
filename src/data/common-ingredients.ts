@@ -60,7 +60,6 @@ export const COMMON_INGREDIENTS = [
       { name: "チーズ", defaultAmount: "適量" },
       { name: "豆腐", defaultAmount: "1丁" },
       { name: "油揚げ", defaultAmount: "2枚" },
-      { name: "納豆", defaultAmount: "3パック" },
     ],
   },
   {
@@ -82,7 +81,7 @@ export const AMOUNT_PRESETS: Record<string, string[]> = {
   // 重さ
   weight: ["100g", "200g", "300g", "400g", "500g"],
   // 個数
-  count: ["1個", "2個", "3個", "4個", "5個", "6個"],
+  count: ["1個", "2個", "3個", "4個", "5個", "6個", "7個", "8個"],
   // 本数
   sticks: ["1本", "2本", "3本", "4本", "5本"],
   // パック

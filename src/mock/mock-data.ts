@@ -1,4 +1,4 @@
-import type { GenerateResponse, DayPlan, MenuItem, Recipe, FavoriteMeal } from "@/lib/types";
+import type { GenerateResponse, DayPlan, MenuItem, Recipe, FavoriteMeal, FridgeItem } from "@/lib/types";
 import { formatDateLabel } from "@/components/Calendar";
 
 // ===== 主菜プール（20種以上） =====
@@ -1909,10 +1909,22 @@ export function buildMockResponse(
   selectedDates: string[],
   mealHistory: string[] = [],
   requestedFavorites: string[] = [],
-  favoriteMeals: FavoriteMeal[] = []
+  favoriteMeals: FavoriteMeal[] = [],
+  fridgeItems: FridgeItem[] = []
 ): GenerateResponse {
   const numDays = selectedDates.length;
   const historySet = new Set(mealHistory);
+
+  // 冷蔵庫の食材名リスト（部分一致用）
+  const fridgeNames = fridgeItems.map((f) => f.name);
+
+  // レシピが冷蔵庫の食材をいくつ使うかスコア計算
+  function fridgeScore(recipe: Recipe): number {
+    if (fridgeNames.length === 0) return 0;
+    return recipe.ingredients.filter((ing) =>
+      fridgeNames.some((fn) => ing.name.includes(fn) || fn.includes(ing.name))
+    ).length;
+  }
 
   // お気に入りから指定されたものをまず配置
   const favMenuItems: typeof MAIN_POOL = [];
@@ -1935,13 +1947,15 @@ export function buildMockResponse(
     }
   }
 
-  // 残り枠を履歴にない主菜で埋める
+  // 残り枠を冷蔵庫スコア＋履歴を考慮して埋める
   const usedNames = new Set(favMenuItems.map((m) => m.name));
   const remaining = numDays - favMenuItems.length;
   const fresh = MAIN_POOL.filter((m) => !historySet.has(m.name) && !usedNames.has(m.name));
-  const shuffledFresh = shuffle(fresh);
-  const shuffledAll = shuffle(MAIN_POOL.filter((m) => !usedNames.has(m.name)));
-  const fillers = [...shuffledFresh, ...shuffledAll]
+
+  // 冷蔵庫の食材がある場合はスコアが高い順にソート、同スコアならシャッフル
+  const scored = shuffle(fresh).sort((a, b) => fridgeScore(b.recipe) - fridgeScore(a.recipe));
+  const scoredAll = shuffle(MAIN_POOL.filter((m) => !usedNames.has(m.name))).sort((a, b) => fridgeScore(b.recipe) - fridgeScore(a.recipe));
+  const fillers = [...scored, ...scoredAll]
     .filter((v, i, arr) => arr.findIndex((a) => a.name === v.name) === i)
     .slice(0, Math.max(0, remaining));
 
@@ -1956,6 +1970,18 @@ export function buildMockResponse(
   // 汁物をシャッフル
   const shuffledSoups = shuffle(SOUP_POOL);
 
+  // 食材に冷蔵庫フラグをつける
+  function markFridge(recipe: Recipe): Recipe {
+    if (fridgeNames.length === 0) return recipe;
+    return {
+      ...recipe,
+      ingredients: recipe.ingredients.map((ing) => ({
+        ...ing,
+        fromFridge: fridgeNames.some((fn) => ing.name.includes(fn) || fn.includes(ing.name)),
+      })),
+    };
+  }
+
   const mealPlan: DayPlan[] = mainPick.map((main, i) => {
     const dateLabel = formatDateLabel(selectedDates[i]);
     const isFirstHalf = i < halfA;
@@ -1968,7 +1994,7 @@ export function buildMockResponse(
       memo: isFirstDay ? "まとめて作る。清潔な容器で冷蔵保存" : "保存分を出すだけ",
       bento: "小分け容器に詰める",
       shared: isFirstHalf ? "A" : "B",
-      recipe: side.recipe,
+      recipe: markFridge(side.recipe),
     };
 
     const soupIdx = i % shuffledSoups.length;
@@ -1982,7 +2008,7 @@ export function buildMockResponse(
         memo: main.memo,
         bento: main.bento,
         shared: null,
-        recipe: main.recipe,
+        recipe: markFridge(main.recipe),
       },
       side: sideMenuItem,
       soup: {
@@ -1991,7 +2017,7 @@ export function buildMockResponse(
         memo: "",
         bento: null,
         shared: null,
-        recipe: shuffledSoups[soupIdx].recipe,
+        recipe: markFridge(shuffledSoups[soupIdx].recipe),
       },
       freeze: main.freeze || null,
     };
@@ -2031,18 +2057,30 @@ export function buildMockResponse(
     return "🥬 野菜・その他";
   }
 
-  const categoryMap = new Map<string, { name: string; qty: string; note: string; fromFridge: boolean }[]>();
+  // 冷蔵庫にあるかチェック
+  function isInFridge(name: string): boolean {
+    return fridgeNames.some((fn) => name.includes(fn) || fn.includes(name));
+  }
+
+  const toBuyMap = new Map<string, { name: string; qty: string; note: string; fromFridge: boolean }[]>();
+  const alreadyHaveMap = new Map<string, { name: string; qty: string; note: string; fromFridge: boolean }[]>();
   const categoryOrder = ["🥩 肉類", "🐟 魚介類", "🥬 野菜・その他", "🧂 調味料・乾物"];
 
   Array.from(grouped.values()).forEach((ing) => {
     const cat = categorize(ing.name);
-    if (!categoryMap.has(cat)) categoryMap.set(cat, []);
-    categoryMap.get(cat)!.push({ name: ing.name, qty: ing.amount, note: "", fromFridge: false });
+    const inFridge = isInFridge(ing.name);
+    const targetMap = inFridge ? alreadyHaveMap : toBuyMap;
+    if (!targetMap.has(cat)) targetMap.set(cat, []);
+    targetMap.get(cat)!.push({ name: ing.name, qty: ing.amount, note: inFridge ? "冷蔵庫にあり" : "", fromFridge: inFridge });
   });
 
   const toBuyCategories = categoryOrder
-    .filter((cat) => categoryMap.has(cat))
-    .map((cat) => ({ category: cat, items: categoryMap.get(cat)! }));
+    .filter((cat) => toBuyMap.has(cat))
+    .map((cat) => ({ category: cat, items: toBuyMap.get(cat)! }));
+
+  const alreadyHaveCategories = categoryOrder
+    .filter((cat) => alreadyHaveMap.has(cat))
+    .map((cat) => ({ category: cat, items: alreadyHaveMap.get(cat)! }));
 
   // freezePrep
   const freezePreps = mealPlan
@@ -2058,7 +2096,7 @@ export function buildMockResponse(
     mealPlan,
     shoppingList: {
       toBuy: toBuyCategories,
-      alreadyHave: [],
+      alreadyHave: alreadyHaveCategories,
     },
     freezePrep: freezePreps,
     tips: [

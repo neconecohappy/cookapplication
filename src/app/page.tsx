@@ -73,7 +73,7 @@ export default function Home() {
 
     try {
       if (USE_MOCK) {
-        const mockResp = buildMockResponse(state.selectedDates, state.mealHistory || [], selectedFavorites, state.favoriteMeals || []);
+        const mockResp = buildMockResponse(state.selectedDates, state.mealHistory || [], selectedFavorites, state.favoriteMeals || [], state.fridgeItems);
         await new Promise((r) => setTimeout(r, 800));
         const newHistory = [
           ...(state.mealHistory || []),
